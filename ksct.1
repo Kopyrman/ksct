@@ -1,0 +1,51 @@
+.TH ksct 1 "Jun 2024" "2.3" "User Manual"
+.SH NAME
+ksct \- X11 set screen color temperature
+.SH SYNOPSIS
+.B xsct 
+[options] 
+.I [temperature]
+.I [brightness]
+
+.SH DESCRIPTION
+.B ksct
+sets the screen's color temperature.
+
+.SH OPTIONS
+.TP
+.B -h, --help
+Display usage information and exit
+.TP
+.B -v, --verbose
+Display debugging information
+.TP
+.B -d, --delta
+Shift temperature and brightness by temperature and brightness value
+.TP
+.B -s, --screen N
+Zero-based index of screen to use.
+.TP
+.B -t, --toggle
+Toggle between night and day temperature.
+.TP
+.B -c, --crtc N
+Zero-based index of CRTC to use.
+.TP
+.I [temperature]
+Black body temperature
+.br
+If the value is 0, ksct sets the color temperature to the default of 6500
+.br
+If no arguments are passed, ksct estimates the current display temperature and brightness
+.TP
+.I [brightness]
+Linear brightness between 0.0 (inclusive) and 1.0 (inclusive). The default value is 1.0 if no parameter is passed.
+
+.SH EXIT STATUS
+ksct exits with an exit status of 0 on success and a non-zero value 0 on failure.
+
+.SH AUTHOR
+ksct is based on sct by Ted Unangst <tedu@openbsd.org>
+
+.SH SEE ALSO
+redshift(1), xtemp(1)
