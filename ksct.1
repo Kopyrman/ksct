@@ -1,15 +1,15 @@
-.TH ksct 1 "Jun 2024" "2.3" "User Manual"
+.TH ksct 1 "Dec 2025" "0.1" "User Manual"
 .SH NAME
-ksct \- X11 set screen color temperature
+ksct \- kopyrman's version of xsct
 .SH SYNOPSIS
-.B xsct 
+.B ksct 
 [options] 
 .I [temperature]
 .I [brightness]
 
 .SH DESCRIPTION
 .B ksct
-sets the screen's color temperature.
+sets the screen's color temperature and brightness
 
 .SH OPTIONS
 .TP
@@ -45,7 +45,7 @@ Linear brightness between 0.0 (inclusive) and 1.0 (inclusive). The default value
 ksct exits with an exit status of 0 on success and a non-zero value 0 on failure.
 
 .SH AUTHOR
-ksct is based on sct by Ted Unangst <tedu@openbsd.org>
+ksct is based on xsct by Fabian Foerg (https://github.com/faf0/sct) 
 
 .SH SEE ALSO
-redshift(1), xtemp(1)
+redshift(1), xtemp(1), xsct(1)

@@ -15,6 +15,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+// options from the command line
+#define OPT_HELP	0x01
+#define OPT_DEBUG	0x02
+#define OPT_DELTA	0x04
+#define OPT_TOGGLE	0x08
+
 #define KSCT_VERSION "0.1"
 
 #define TEMPERATURE_NORM    6000
@@ -28,6 +34,9 @@
 // GAMMA = K0 + K1 * ln(T - T0)
 // Red range (T0 = TEMPERATURE_ZERO)
 
+// Red color
+#define GAMMA_K0RB          1.75390204039018
+#define GAMMA_K1RB          -0.1150805671482
 // Green color
 #define GAMMA_K0GR          -1.47751309139817
 #define GAMMA_K1GR          0.28590164772055
@@ -35,14 +44,13 @@
 #define GAMMA_K0BR          -4.38321650114872
 #define GAMMA_K1BR          0.6212158769447
 // Blue range  (T0 = TEMPERATURE_NORM - TEMPERATURE_ZERO)
-// Red color
-#define GAMMA_K0RB          1.75390204039018
-#define GAMMA_K1RB          -0.1150805671482
+
 // Green color
 #define GAMMA_K0GB          1.49221604915144
 #define GAMMA_K1GB          -0.07513509588921
+
 #define BRIGHTHESS_DIV      65470.988
-#define DELTA_MIN           -1000000
+#define DELTA_MIN			INT16_MAX
 
 typedef struct screen_gamma_t
 {
@@ -53,7 +61,7 @@ typedef struct screen_gamma_t
 
 typedef struct screen_status_t
 {
-    int temp;
+    int16_t temp;
     double brightness;
 } screen_status;
 
