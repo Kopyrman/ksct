@@ -5,27 +5,30 @@
 
 static inline void usage(const char *restrict const pname)
 {
-    printf("Ksct (%s)\n"
-           "Usage: %s [options] [temperature] [brightness]\n"
-           "\tIf the argument is 0, ksct resets the display to the default temperature (6500K)\n"
-           "\tIf no arguments are passed, ksct estimates the current display temperature and brightness\n"
-           "Options:\n"
-           "\t-h, --help \t ksct will display this usage information\n"
-           "\t-v, --verbose \t ksct will display debugging information\n"
-		   "\t-B, --default\t ksct will set the default temperature\n"
-           "\t-d, --delta\t ksct will consider temperature and brightness parameters as relative shifts\n"
-           "\t-s, --screen \t ksct will only select screen specified by given zero-based index\n"
-           "\t-t, --toggle \t ksct will toggle between 'day' and 'night' mode\n"
-		   "\t-N, --night \t ksct will set the night mode temperature and brightness\n"
-		   "\t-D, --day \t ksct will set the day mode temperature and brightness\n"
-           "\t-c, --crtc N\t ksct will only select CRTC specified by given zero-based index\n", KSCT_VERSION, pname);
+    printf(
+		"Ksct (%s)\n"
+		"Usage: %s [options] [temperature] [brightness]\n"
+		"\tIf the argument is 0, ksct resets the display to the default temperature (6500K)\n"
+		"\tIf no arguments are passed, ksct estimates the current display temperature and brightness\n"
+		"Options:\n"
+		"\t-h, --help \t ksct will display this usage information\n"
+		"\t-v, --verbose \t ksct will display debugging information\n"
+		"\t-B, --default\t ksct will change the default temperature to the values given\n"
+		"\t-d, --delta\t ksct will consider temperature and brightness parameters as relative shifts\n"
+		"\t-s, --screen N\t ksct will only select screen specified by given zero-based index\n"
+		"\t-t, --toggle \t ksct will toggle between 'day' and 'night' mode\n"
+		"\t-N, --night \t ksct will change the night mode temperature and brightness to the values given\n"
+		"\t-D, --day \t ksct will change the day mode temperature and brightness to the values given\n"
+		"\t-c, --crtc N\t ksct will only select CRTC specified by given zero-based index\n",
+		KSCT_VERSION, pname
+	);
 }
 
 
 static inline double DoubleTrim(double x, double a, double b)
 {
     const double buff[3] = {a, x, b};
-    return buff[(uint16_t)(x > a) + (uint16_t)(x > b)];
+    return buff[(x > a) + (x > b)];
 }
 
 
@@ -73,7 +76,7 @@ static screen_status get_sct_for_screen(Display *dpy, int screen, int icrtc, con
         temp.brightness /= n;
         temp.brightness /= BRIGHTHESS_DIV;
         temp.brightness = DoubleTrim(temp.brightness, 0.0, 1.0);
-        if (fdebug > 0)
+        if (fdebug)
 			fprintf(stderr, "DEBUG: Gamma: %f, %f, %f, brightness: %f\n", gamma.r, gamma.g, gamma.b, temp.brightness);
         const double gammad = gamma.b - gamma.r;
 
@@ -90,7 +93,7 @@ static screen_status get_sct_for_screen(Display *dpy, int screen, int icrtc, con
     else
         temp.brightness = DoubleTrim(temp.brightness, 0.0, 1.0);
 
-    temp.temp = (int)(t + 0.5);
+    temp.temp = (int16_t)(t + 0.5);
 
     return temp;
 }
@@ -127,7 +130,7 @@ static void sct_for_screen(Display *dpy, int screen, int icrtc, screen_status te
         gamma.g = DoubleTrim(GAMMA_K0GB + GAMMA_K1GB * g, 0.0, 1.0);
         gamma.b = 1.0;
     }
-    if (fdebug > 0)
+    if (fdebug)
 		fprintf(stderr, "DEBUG: Gamma: %f, %f, %f, brightness: %f\n", gamma.r, gamma.g, gamma.b, b);
 
     n = res->ncrtc;
@@ -188,14 +191,61 @@ static void bound_temp(screen_status *const temp)
     }
 }
 
-int main(int argc, char **argv)
+// gets command line arguments and fill the options, and temp params
+static inline bool getArgs(const int argc, const char** argv, uint8_t *restrict options, screen_status *restrict temp, int16_t *restrict crtc, int8_t *restrict screen)
 {
-    int i, screen, screens;
-    int screen_specified, screen_first, screen_last, crtc_specified;
-    screen_status temp;
-	uint8_t options = 0;
+	*crtc = -1;
+	*screen = -1;
+	*options = 0;
+	
+	for (int8_t i = 1; i < argc; i++)
+    {
+        if		(!strcmp(argv[i],"-h") || !strcmp(argv[i],"--help"))	*options |= OPT_HELP;
+        else if (!strcmp(argv[i],"-v") || !strcmp(argv[i],"--verbose"))	*options |= OPT_DEBUG;
+        else if (!strcmp(argv[i],"-d") || !strcmp(argv[i],"--delta"))	*options |= OPT_DELTA;
+        else if (!strcmp(argv[i],"-t") || !strcmp(argv[i],"--toggle"))	*options |= OPT_TOGGLE;
+        else if (!strcmp(argv[i],"-s") || !strcmp(argv[i],"--screen"))
+        {
+            i++;
+
+            if (i < argc)
+                *screen = (int8_t)atoi(argv[i]);
+            else
+			{
+                fprintf(stderr, "ERROR! Required value for screen not specified!\n");
+				return true;
+            }
+        }
+        else if ((strcmp(argv[i],"-c") == 0) || (strcmp(argv[i],"--crtc") == 0))
+        {
+            i++;
+
+            if (i < argc)
+                *crtc = (int8_t)atoi(argv[i]);
+            else
+			{
+                fprintf(stderr, "ERROR! Required value for crtc not specified!\n");
+				return true;
+            }
+        }
+        else if (temp->temp == DELTA_MIN)
+			temp->temp = (int16_t)atoi(argv[i]);
+        else if (temp->brightness == DELTA_MIN)
+			temp->brightness = atof(argv[i]);
+        else
+        {
+            fprintf(stderr, "ERROR! Unknown parameter: %s\n!", argv[i]);
+			return true;
+        }
+    }
+
+	return false;
+}
+
+
+int main(int argc, const char **argv)
+{
     Display *dpy = XOpenDisplay(NULL);
-    unsigned char failed = 0;
 
     if (!dpy)
     {
@@ -204,141 +254,104 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 	
-    screens = XScreenCount(dpy);
-    screen_first = 0;
-    screen_last = screens - 1;
-    screen_specified = -1;
-    crtc_specified = -1;
-    temp.temp = DELTA_MIN;
-    temp.brightness = DELTA_MIN;
-
-    for (i = 1; i < argc; i++)
-    {
-        if		((strcmp(argv[i],"-h") == 0) || (strcmp(argv[i],"--help") == 0))	options |= OPT_HELP;
-        else if ((strcmp(argv[i],"-v") == 0) || (strcmp(argv[i],"--verbose") == 0)) options |= OPT_DEBUG;
-        else if ((strcmp(argv[i],"-d") == 0) || (strcmp(argv[i],"--delta") == 0))	options |= OPT_DELTA;
-        else if ((strcmp(argv[i],"-t") == 0) || (strcmp(argv[i],"--toggle") == 0))	options |= OPT_TOGGLE;
-        else if ((strcmp(argv[i],"-s") == 0) || (strcmp(argv[i],"--screen") == 0))
-        {
-            i++;
-            if (i < argc)
-                screen_specified = atoi(argv[i]);
-            else
-			{
-                fprintf(stderr, "ERROR! Required value for screen not specified!\n");
-                failed = 1;
-				options |= OPT_HELP;
-            }
-        }
-        else if ((strcmp(argv[i],"-c") == 0) || (strcmp(argv[i],"--crtc") == 0))
-        {
-            i++;
-            if (i < argc)
-                crtc_specified = atoi(argv[i]);
-            else
-			{
-                fprintf(stderr, "ERROR! Required value for crtc not specified!\n");
-                failed = 1;
-				options |= OPT_HELP;
-            }
-        }
-        else if
-			(temp.temp == DELTA_MIN) temp.temp = atoi(argv[i]);
-        else if
-			(temp.brightness == DELTA_MIN) temp.brightness = atof(argv[i]);
-        else
-        {
-            fprintf(stderr, "ERROR! Unknown parameter: %s\n!", argv[i]);
-            failed = 1;
-			options |= OPT_HELP;
-        }
-    }
+	int8_t screenLast  = (int8_t)XScreenCount(dpy) - 1;
+	int8_t screenFirst = 0;
 
 
+	uint8_t options = 0;
+    screen_status temp = {DELTA_MIN, DELTA_MIN};
+	int16_t crtc;
+	int8_t screen;
 
+	if (getArgs(argc, argv, &options, &temp, &crtc, &screen))
+		return EXIT_FAILURE;
+	
+
+	if (screen >= 0)
+		screenLast = (int8_t)screen;
 
     if (options & OPT_HELP)
+	{
         usage(argv[0]);
-    else if (screen_specified >= screens)
-    {
-        fprintf(stderr, "ERROR! Invalid screen index: %d!\n", screen_specified);
-        failed = 1;
+		return EXIT_SUCCESS;
+	}
+
+	if (screen > screenLast)
+	{
+        fprintf(stderr, "ERROR! Invalid screen index: %d!\n", screen);
+		XCloseDisplay(dpy);
+		return EXIT_FAILURE;
     }
-    else
-    {
-        // Check if the temp is above 100 less than the norm and change to NIGHT if it is
-        // The threashold was chosen to give some room for varients in temp
-        if (!(options & OPT_TOGGLE))
-        {
-            for (screen = screen_first; screen <= screen_last; screen++)
-            {
-                temp = get_sct_for_screen(dpy, screen, crtc_specified, options & OPT_DEBUG);
-                if (temp.temp > (TEMPERATURE_NORM - 100))
-                    temp.temp = TEMPERATURE_NIGHT;
-                else
-                    temp.temp = TEMPERATURE_NORM;
-                sct_for_screen(dpy, screen, crtc_specified, temp, options & OPT_DEBUG);
-            }
-        }
 
-        if ((temp.brightness == DELTA_MIN) && !(options & OPT_DELTA))
-			temp.brightness = 1.0;
+	if ((options & OPT_DELTA) & (options & OPT_TOGGLE))
+	{
+		fprintf(stderr, "ERROR! options --delta and --toggle are exclusive to each other!\n");
+		XCloseDisplay(dpy);
+		return EXIT_FAILURE;
+	}
 
-        if (screen_specified >= 0)
-        {
-            screen_first = screen_specified;
-            screen_last = screen_specified;
-        }
-        if ((temp.temp == DELTA_MIN) && !(options & OPT_DELTA))
-        {
-            // No arguments, so print estimated temperature for each screen
-            for (screen = screen_first; screen <= screen_last; screen++)
-            {
-                temp = get_sct_for_screen(dpy, screen, crtc_specified, options & OPT_DEBUG);
-                printf("Screen %d: temperature ~ %d %f\n", screen, temp.temp, temp.brightness);
-            }
-        }
-        else
-        {
-            if ((options & OPT_DELTA))
-            {
-                // Set temperature to given value or default for a value of 0
-                if (temp.temp == 0)
-                    temp.temp = TEMPERATURE_NORM;
-                else
-                    bound_temp(&temp);
 
-                for (screen = screen_first; screen <= screen_last; screen++)
-                   sct_for_screen(dpy, screen, crtc_specified, temp, options & OPT_DEBUG);
-            }
-            else
-            {
-                // Delta mode: Shift temperature and optionally brightness of each screen by given value
-                if (temp.temp == DELTA_MIN || temp.brightness == DELTA_MIN)
-                {
-                    fprintf(stderr, "ERROR! Temperature and brightness delta must both be specified!\n");
-                    failed = 1;
-                }
-                else
-                {
-                    for (screen = screen_first; screen <= screen_last; screen++)
-                    {
-                        screen_status tempd = get_sct_for_screen(dpy, screen, crtc_specified, options & OPT_DEBUG);
+	if (options & OPT_DELTA)
+	{
+		// Delta mode: Shift temperature and optionally brightness of each screen by given value
+		if (temp.temp == DELTA_MIN || temp.brightness == DELTA_MIN)
+		{
+			fprintf(stderr, "ERROR! Temperature and brightness delta must both be specified!\n");
+			XCloseDisplay(dpy);
+			return EXIT_FAILURE;
+		}
 
-                        tempd.temp += temp.temp;
-                        tempd.brightness += temp.brightness;
+		for (int8_t scr = screenFirst; screen <= screenLast; screen++)
+		{
+			screen_status tempDiff = get_sct_for_screen(dpy, scr, crtc, options & OPT_DEBUG);
 
-                        bound_temp(&tempd);
+			tempDiff.temp += temp.temp;
+			tempDiff.brightness += temp.brightness;
 
-                        sct_for_screen(dpy, screen, crtc_specified, tempd, options & OPT_DEBUG);
-                    }
-                }
-            }
-        }
-    }
+			bound_temp(&tempDiff);
+
+			sct_for_screen(dpy, scr, crtc, tempDiff, options & OPT_DEBUG);
+		}
+	}
+	else if (options & OPT_TOGGLE)
+	{
+		// Check if the temp is above 100 less than the norm and change to NIGHT if it is
+		// The threashold was chosen to give some room for varients in temp
+		for (int8_t scr = screenFirst; scr <= screenLast; scr++) // iterate throught every screen
+		{
+			temp = get_sct_for_screen(dpy, scr, crtc, options & OPT_DEBUG);
+
+			if (temp.temp > (TEMPERATURE_NORM - 100))
+				temp.temp = TEMPERATURE_NIGHT;
+			else
+				temp.temp = TEMPERATURE_NORM;
+
+			sct_for_screen(dpy, scr, crtc, temp, options & OPT_DEBUG);
+		}
+	}
+
+
+	// Set temperature to given value or default for a value of 0
+	if (temp.temp == 0)
+		temp.temp = TEMPERATURE_NORM;
+	else
+		bound_temp(&temp);
+
+
+	// TODO: add a condition to this below (im so fucking blue)
+
+	// No options, so simply set screen to geven temperature
+	for (int8_t scr = screenFirst; scr <= screenLast; scr++)
+	   sct_for_screen(dpy, scr, crtc, temp, options & OPT_DEBUG);
+
+
+	// No arguments, so print estimated temperature for each screen
+	for (int8_t scr = screenFirst; scr <= screenLast; scr++)
+	{
+		temp = get_sct_for_screen(dpy, scr, crtc, options & OPT_DEBUG);
+		printf("Screen %d: temperature ~ %d %f\n", scr, temp.temp, temp.brightness);
+	}
 
     XCloseDisplay(dpy);
-
-    return failed ? EXIT_FAILURE : EXIT_SUCCESS;
+	return EXIT_SUCCESS;
 }
-

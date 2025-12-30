@@ -1,5 +1,5 @@
 CC ?= gcc
-CFLAGS ?= -Wall -Wextra -Werror -pedantic -std=c17 -O2 -I /usr/X11R6/include
+CFLAGS ?= -Wall -Wextra -Werror -Wpedantic -Wconversion -std=c17 -O2 -I /usr/X11R6/include
 LDFLAGS ?= -L /usr/X11R6/lib -s
 LIBS = -lX11 -lXrandr -lm
 

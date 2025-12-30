@@ -3,6 +3,10 @@
 #ifndef __KSCT_H
 #define __KSCT_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/Xproto.h>
@@ -70,5 +74,19 @@ static double DoubleTrim(double x, double a, double b);
 static screen_status get_sct_for_screen(Display *dpy, int screen, int icrtc, const bool fdebug);
 static void sct_for_screen(Display *dpy, int screen, int icrtc, screen_status temp, const bool fdebug);
 static void bound_temp(screen_status *const temp);
+
+static bool getArgs(
+	const int argc,
+	const char** argv,
+	uint8_t *restrict options,
+	screen_status *restrict temp,
+	int16_t *restrict crtc,
+	int8_t *restrict screen
+);
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif /* __KSCT_H */
